@@ -1,0 +1,24 @@
+# Ignore all .pyc files
+*.pyc
+
+# Ignore the __pycache__ folders
+__pycache__/
+**/__pycache__/
+
+# Ignore VSCode settings
+.vscode/
+
+# Ignore environment folders
+venv/
+env/
+
+# Ignore SQLite DB
+db.sqlite3
+
+# Ignore media and static files
+/media/
+/staticfiles/
+
+# Ignore migrations (optional, during early dev)
+**/migrations/
+!**/migrations/__init__.py  # keep __init__.py
