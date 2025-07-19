@@ -3,25 +3,20 @@ from django.contrib.auth.models import BaseUserManager,AbstractUser
 from django.core.validators import FileExtensionValidator
 
 from phonenumber_field.modelfields import PhoneNumberField
+from cloudinary import models as cloudinary_models
 
-from backend.db_models import mini_models,location
+from backend.db_models import mini_models,location,cloudinary_field
 from backend.accessories_codes import id_generator
-import choices
+from backend import choices
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, user_id=None, first_name=None, last_name=None, date_of_birth=None, user_type=None, middle_name='', password=None, **extra_fields):
+    def create_user(self, user_id=None, first_name=None, last_name=None, date_of_birth=None, user_type=None, middle_name='', password=None,username=None, **extra_fields):
         
         if not user_type:
             raise ValueError("User type is required")
         if not user_id:
-            if user_type == 'staff':
-                user_id = id_generator.id_gen(staff=True)
-            elif user_type == 'guardian':
-                user_id = id_generator.id_gen(guardian=True)  
-            else:
-                user_id = id_generator.id_gen()
-        
+            user_id = id_generator.id_gen(user_type=user_type)
 
         user = self.model(
             user_id=user_id,
@@ -36,7 +31,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, **kwargs):
+    def create_superuser(self,username=None, **kwargs):
         kwargs.setdefault("user_type", "staff")
         kwargs.setdefault("is_staff", True)
         kwargs.setdefault("is_superuser", True)
@@ -71,15 +66,16 @@ class User(AbstractUser):
     USERNAME_FIELD = "user_id"
     REQUIRED_FIELDS = ["first_name", "middle_name", "last_name","date_of_birth", "user_type"]
 
+    objects = UserManager()
     def __str__(self):
         return f"{self.first_name} {self.middle_name} {self.last_name} ({self.user_id})"
     def save(self, *args, **kwargs):
         if not self.user_id:
             # Generate a new user ID based on the user type
             if self.user_type == 'staff':
-                self.user_id = id_generator.id_gen(staff=True)
+                self.user_id = id_generator.id_gen(user_type=self.user_type)
             elif self.user_type == 'guardian':
-                self.user_id = id_generator.id_gen(guardian=True)
+                self.user_id = id_generator.id_gen(user_type=self.user_type)
             else:
                 self.user_id = id_generator.id_gen()
         super().save(*args, **kwargs)
@@ -133,7 +129,7 @@ class Staff(models.Model):
         verbose_name_plural = "Staff"
     
     def __str__(self):
-        return f"Staff: {self.first_name} {self.last_name} ({self.user_id})"
+        return f"Staff: {self.user.first_name} {self.user.last_name} ({self.user.user_id})"
     
     
 class StaffQualification(models.Model):
@@ -149,7 +145,8 @@ class StaffQualification(models.Model):
             ('other', 'Other')
         ], verbose_name="Qualification Type"
     )
-    qualification_file = models.FileField(
+    qualification_file = cloudinary_field.CustomCloudinaryField(
+        'file',
         upload_to='staff/qualifications/',
         validators=[FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'])],
-        verbose_name="Qualification File")
+        quality=50)

@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from decouple import config
-
+import cloudinary
 
 
 
@@ -30,6 +30,7 @@ DEBUG = config('DEBUG', cast=bool)
 
 ALLOWED_HOSTS = []
 
+AUTH_USER_MODEL = 'backend.User'
 
 # Application definition
 
@@ -147,13 +148,13 @@ STATIC_URL = 'static/'
 # Use Cloudinary as the default file storage
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_NAME'),
-    'API_KEY': config('CLOUDINARY_API_KEY'),
-    'API_SECRET': config('CLOUDINARY_API_SECRET'),
-}
 
-
+cloudinary.config( 
+  cloud_name = config('CLOUDINARY_NAME'), 
+  api_key = config('CLOUDINARY_API_KEY'), 
+  api_secret =config('CLOUDINARY_API_SECRET'),
+  secure = True
+)
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
