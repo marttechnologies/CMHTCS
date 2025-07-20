@@ -1,9 +1,12 @@
 from django.db import models
+from django.db import transaction
 from django.contrib.auth.models import BaseUserManager,AbstractUser
 from django.core.validators import FileExtensionValidator
+from django.db import transaction
+
+from cloudinary.uploader import destroy
 
 from phonenumber_field.modelfields import PhoneNumberField
-from cloudinary import models as cloudinary_models
 
 from backend.db_models import mini_models,location,cloudinary_field
 from backend.accessories_codes import id_generator
@@ -18,17 +21,18 @@ class UserManager(BaseUserManager):
         if not user_id:
             user_id = id_generator.id_gen(user_type=user_type)
 
-        user = self.model(
-            user_id=user_id,
-            first_name=first_name,
-            middle_name=middle_name,
-            last_name=last_name,
-            date_of_birth=date_of_birth,
-            user_type=user_type,
-            **extra_fields
-        )
-        user.set_password(password)
-        user.save(using=self._db)
+        with transaction.atomic():
+            user = self.model(
+                user_id=user_id,
+                first_name=first_name,
+                middle_name=middle_name,
+                last_name=last_name,
+                date_of_birth=date_of_birth,
+                user_type=user_type,
+                **extra_fields
+            )
+            user.set_password(password)
+            user.save(using=self._db)
         return user
 
     def create_superuser(self,username=None, **kwargs):
@@ -39,8 +43,8 @@ class UserManager(BaseUserManager):
 
         if not kwargs.get("is_staff") or not kwargs.get("is_superuser"):
             raise ValueError("Superuser must have is_staff=True and is_superuser=True.")
-
-        return self.create_user(**kwargs)
+        with transaction.atomic():
+            return self.create_user(**kwargs)
     
 class User(AbstractUser):
     # Unique identifier for the user
@@ -70,15 +74,12 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.first_name} {self.middle_name} {self.last_name} ({self.user_id})"
     def save(self, *args, **kwargs):
-        if not self.user_id:
-            # Generate a new user ID based on the user type
-            if self.user_type == 'staff':
+        with transaction.atomic():
+            # Ensure user_id is generated if not provided
+            if not self.user_id:
+                # Generate a new user ID based on the user type
                 self.user_id = id_generator.id_gen(user_type=self.user_type)
-            elif self.user_type == 'guardian':
-                self.user_id = id_generator.id_gen(user_type=self.user_type)
-            else:
-                self.user_id = id_generator.id_gen()
-        super().save(*args, **kwargs)
+            super().save(*args, **kwargs)
     
 
 
@@ -150,3 +151,15 @@ class StaffQualification(models.Model):
         upload_to='staff/qualifications/',
         validators=[FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'])],
         quality=50)
+    
+    def delete(self,*args, **kwargs):
+        """
+        Override delete method to remove the file from cloudinary
+        """
+        with transaction.atomic():
+            public_id = self.qualification_file.public_id
+            
+            super().delete(*args, **kwargs)
+            destroy(public_id)
+            
+            
