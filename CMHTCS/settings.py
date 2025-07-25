@@ -30,7 +30,7 @@ DEBUG = config('DEBUG', cast=bool)
 
 ALLOWED_HOSTS = []
 
-AUTH_USER_MODEL = 'backend.User'
+AUTH_USER_MODEL = 'account.User'
 
 # Application definition
 
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "daphne",
     "channels",
     "backend.apps.BackendConfig",
+    "account.apps.AccountConfig",
     "corsheaders",
     'django.contrib.admin',
     'django.contrib.auth',
